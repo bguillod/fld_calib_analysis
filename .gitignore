@@ -3,3 +3,4 @@
 .RData
 .Ruserdata
 .init_local.R
+packrat/lib*/

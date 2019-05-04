@@ -1,7 +1,4 @@
 # test reading in a csv file and doing some analysis
-# library(ggplot2)
-# library(RColorBrewer)
-# library(tidyverse)
 source("init.R")
 
 # this should not be necessary if defined as an R project
@@ -10,6 +7,8 @@ source("init.R")
 source("validation_isimipFL_module_load.R")
 source("validation_isimipFL_module_process.R")
 source("validation_isimipFL_module_plot.R")
+source("validation_isimipFL_module_helpers.R")
+# source("validation_isimipFL_module_damFun.R")
 
 # inputs:
 # continent
@@ -18,11 +17,8 @@ continent_name <- "EUR"
 # cost function
 cost_funs <- get_costFunctions_list()
 cost_fun <- "dlog2"
-# TODO other parameters of calibration:
-calib_methods <- get_calib_full_list()
-# anything else is constant and default values
-# So, now choose a name for each damage function calibration strategy.
-
+# All varying parameters of calibration:
+calib_methods <- get_calib_methods_tibble()
 
 
 # load data

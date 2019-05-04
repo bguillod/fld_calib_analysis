@@ -8,40 +8,6 @@
 # source("validation_isimipFL_module_load.R")
 require(tidyverse)
 
-get_regions_list <- function() {
-    # get the list of all regions
-    return(sort(unique(sapply(strsplit(list.files(file.path(DATA_PATH_FLDCAL, "damages_JRCdamFun")), "_"), "[",3))))
-}
-
-get_costFunctions_list <- function() {
-    # get the list of all cost functions combinations
-    costfunc_combinations_list <- sort(unique(sapply(strsplit(list.files(file.path(DATA_PATH_FLDCAL, "calibration_eval")), "_"), "[",4)))
-    costfunc_list <- sort(unique(sapply(strsplit(costfunc_combinations_list, "-"),"[",1)))
-    
-    return(list(costfunc=costfunc_list, costfunc_full=costfunc_combinations_list))
-}
-
-get_calib_full_list <- function() {
-    # get the list of all cost functions combinations
-    files <- sapply(strsplit(Sys.glob(file.path(DATA_PATH_FLDCAL, "calibration_eval/calib_EUR_*step0.001_*")), "/"), function(s) rev(s)[1])
-    # get the corresponding arguments
-    files.parts <- strsplit(files, "_") %>% sapply(function(s) if (length(s)==10) s else c(s[1:7],"",s[8:9])) %>% unlist() %>% t() %>% as.data.frame()
-    which.cst <- sapply(1:ncol(files.parts), function(i) length(unique(files.parts[,i])))==1
-    varying.pars <- tibble(cost_function=sapply(strsplit(files.parts[[4]],"-"),"[",1),
-                               exclude_years_0totals=files.parts[[8]]!="")
-    # (regionID,calib_method,cost_function,which_file,
-    #     years_range=c(1992,2010),
-    #     calib_options=NULL,
-    #     n_per_dim=20,underestimation_factor=2,
-    #     hazard_protection='flopros',subtract_matsiro=1,entity_year=0,keep_countries_0emdat=2,
-    #     remove_years_0emdat=0,remove_years_0YDS=list(do=0),exclude_years_0totals=0,
-    #     MM_how='MMM',pars_range=list(c(0.0001,1),c(0.0001,5)))
-    # paste0('calib_',regionID,'_',years_range[1], '-', years_range[2], '_',
-    #        cost_function, '-uf', underestimation_factor, '-',
-    #        MM_how, '-', filename_calib_method)
-    return(varying.pars)
-}
-
 
 load_JRC_eval <- function(RegionID,
                           years_range = c(1971,2010),
@@ -58,7 +24,7 @@ load_JRC_eval <- function(RegionID,
     return(dat)
 }
 
-get_calib_filename <- function(regionID,calib_method,cost_function,which_file,
+get_calib_filename <- function(regionID,calib_method="patternsearch",cost_function,which_file,
                                years_range=c(1992,2010),
                                calib_options=NULL,
                                n_per_dim=20,underestimation_factor=2,
