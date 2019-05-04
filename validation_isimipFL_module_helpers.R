@@ -43,11 +43,17 @@ get_calib_methods_tibble <- function() {
     return(calib_methods)
 }
 
-call_fun_by_calibMethod <- function(calib_method, fun, calib_method_list=calib_methods, ...) {
+call_fun_by_calibMethod <- function(calib_method, fun, calib_method_list=get_calib_methods_tibble(), ...) {
     # calib_method can be a string or an integer
-    if (is.character(calib_method)) calib_method <- which(calib_method_list$calibration_method_names == calib_method)
+    if (is.character(calib_method)) {
+        if (!(calib_method %in% calib_method_list$calibration_method_names)) stop("** ERROR ** calibration method selected does not exist *****")
+        i_calib_method <- which(calib_method_list$calibration_method_names == calib_method)
+    } else {
+        if (calib_method>nrow(calib_method_list)) stop("** ERROR ** calibration method i selected does not exist *****")
+        i_calib_method <- calib_method
+    }
     all_args <- list()
-    for (i in 2:ncol(calib_method_list)) all_args[[names(calib_method_list)[i]]] <- calib_method_list[[i]][calib_method]
+    for (i in 2:ncol(calib_method_list)) all_args[[names(calib_method_list)[i]]] <- calib_method_list[[i]][i_calib_method]
     all_args <- c(all_args, list(...))
     do.call(what = fun, args = all_args)
 }

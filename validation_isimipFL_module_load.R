@@ -110,3 +110,27 @@ load_calib_eval <- function(...) {
                                           used_in_calibration=as.logical(used_in_calibration))
     return(dat)
 }
+
+load_all_evals_one_region <- function(regionID, regSum_only=FALSE) {
+    calib_methods <- get_calib_methods_tibble()
+    for (i in 1:nrow(calib_methods)) {
+        if (i==1) {
+            data_calib <- call_fun_by_calibMethod(calib_methods$calibration_method_names[i], load_calib_eval, regionID=regionID) %>%
+                mutate(damage_source=ifelse(dataset=="EM-DAT", "EM-DAT",calib_methods$calibration_method_names[i]))
+        } else {
+            data_calib <- data_calib %>% bind_rows(call_fun_by_calibMethod(calib_methods$calibration_method_names[i], load_calib_eval, regionID=regionID) %>%
+                                                       mutate(damage_source=ifelse(dataset=="EM-DAT", "EM-DAT",calib_methods$calibration_method_names[i])))
+        }
+    }
+    data_JRC <- load_JRC_eval(regionID) %>%
+        filter(dataset!='EM-DAT') %>%
+        mutate(used_in_calibration=F, damage_source=ifelse(dataset=="EM-DAT", "EM-DAT","JRC"))
+    data <- bind_rows(data_calib, data_JRC) %>% unique() %>% mutate(damage_source=factor(damage_source, levels=c("EM-DAT","JRC",calib_methods$calibration_method_names)))
+    # add regional sum data
+    data_sum <- data %>% group_by(year, dataset,damage_source) %>% summarise(damage=sum(damage)) %>% mutate(used_in_calibration=year %in% 1992:2010, country=paste0("ALL (",regionID,")"))
+    if (regSum_only) {
+        return(data_sum)
+    } else {
+        return(data %>% bind_rows(data_sum))
+    }
+}
