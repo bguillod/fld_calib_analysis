@@ -26,7 +26,7 @@ plot_yearly_boxplot <- function(data, show=T) {
 
 # envelope plot of yearly damages
 plot_yearly_env <- function(data, show=T) {
-    test <- ggplot(data, aes(x=year,y=damage))+geom_smooth(data=df %>% group_by(year, country) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage)), aes(color=country,y=y,x=year,ymin=ymin,ymax=ymax),stat="identity")
+    test <- ggplot(data, aes(x=year,y=damage))+geom_smooth(data=data %>% group_by(year, country) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage)), aes(color=country,y=y,x=year,ymin=ymin,ymax=ymax),stat="identity")
     if (show) print(test)
     invisible(test)
 }

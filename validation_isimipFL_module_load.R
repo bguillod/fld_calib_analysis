@@ -10,12 +10,12 @@ require(tidyverse)
 
 get_regions_list <- function() {
     # get the list of all regions
-    return(sort(unique(sapply(strsplit(list.files("/Users/bguillod/Documents/work/ETH/climada/DATA_OUTPUT/euler/isimip/results/damages_JRCdamFun"), "_"), "[",3))))
+    return(sort(unique(sapply(strsplit(list.files(file.path(DATA_PATH_FLDCAL, "damages_JRCdamFun")), "_"), "[",3))))
 }
 
 get_costFunctions_list <- function() {
     # get the list of all cost functions combinations
-    costfunc_combinations_list <- sort(unique(sapply(strsplit(list.files("/Users/bguillod/Documents/work/ETH/climada/DATA_OUTPUT/euler/isimip/results/calibration_eval"), "_"), "[",4)))
+    costfunc_combinations_list <- sort(unique(sapply(strsplit(list.files(file.path(DATA_PATH_FLDCAL, "calibration_eval")), "_"), "[",4)))
     costfunc_list <- sort(unique(sapply(strsplit(costfunc_combinations_list, "-"),"[",1)))
     
     return(list(costfunc=costfunc_list, costfunc_full=costfunc_combinations_list))
@@ -23,11 +23,11 @@ get_costFunctions_list <- function() {
 
 get_calib_full_list <- function() {
     # get the list of all cost functions combinations
-    files <- sapply(strsplit(Sys.glob("/Users/bguillod/Documents/work/ETH/climada/DATA_OUTPUT/euler/isimip/results/calibration_eval/calib_EUR_*step0.001_*"), "/"), function(s) rev(s)[1])
+    files <- sapply(strsplit(Sys.glob(file.path(DATA_PATH_FLDCAL, "calibration_eval/calib_EUR_*step0.001_*")), "/"), function(s) rev(s)[1])
     # get the corresponding arguments
     files.parts <- strsplit(files, "_") %>% sapply(function(s) if (length(s)==10) s else c(s[1:7],"",s[8:9])) %>% unlist() %>% t() %>% as.data.frame()
     which.cst <- sapply(1:ncol(files.parts), function(i) length(unique(files.parts[,i])))==1
-    varying.pars <- data_frame(cost_function=sapply(strsplit(files.parts[[4]],"-"),"[",1),
+    varying.pars <- tibble(cost_function=sapply(strsplit(files.parts[[4]],"-"),"[",1),
                                exclude_years_0totals=files.parts[[8]]!="")
     # (regionID,calib_method,cost_function,which_file,
     #     years_range=c(1992,2010),
@@ -53,7 +53,7 @@ load_JRC_eval <- function(RegionID,
     filename_head <-  paste0('damages_JRC_', RegionID, '_', years_range[1], '-', years_range[2])
     filename_haz = paste0('Haz-Prot', hazard_protection, '-subMATSIRO', subtract_matsiro)
     filename_ent = paste0('Entity-Year', entity_year)
-    output_eval_filename = paste0('/Users/bguillod/Documents/work/ETH/climada/DATA_OUTPUT/euler/isimip/results/damages_JRCdamFun/', filename_head, '_', filename_haz, '_', filename_ent, '_eval.csv')
+    output_eval_filename = paste0(file.path(DATA_PATH_FLDCAL, 'damages_JRCdamFun/'), filename_head, '_', filename_haz, '_', filename_ent, '_eval.csv')
     dat <- read_csv(output_eval_filename)
     return(dat)
 }
@@ -115,8 +115,8 @@ get_calib_filename <- function(regionID,calib_method,cost_function,which_file,
     if (!(which_file %in% names(which_file_list))) {
         stop(paste("input parameter 'which_file' should have one of the following value : ", paste(names(which_file_list), collapse=", ")))
     }
-    path_in <- "/Users/bguillod/Documents/work/ETH/climada/DATA_OUTPUT/euler/isimip/results/"
-    filename <- paste0(path_in, which_file_list[[which_file]][1], filename_calib, '_',
+    path_in <- DATA_PATH_FLDCAL
+    filename <- paste0(path_in, "/", which_file_list[[which_file]][1], filename_calib, '_',
                        filename_haz, '_', filename_ent, '_', filename_filter, '_',
                        filename_pars, which_file_list[[which_file]][2])
     return(filename)

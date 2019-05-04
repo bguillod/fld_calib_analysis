@@ -2,8 +2,11 @@
 # library(ggplot2)
 # library(RColorBrewer)
 # library(tidyverse)
+source("init.R")
 
-setwd("/Users/bguillod/Documents/work/ETH/climada/scripts/analyses/climada-flood-isimip/R_code")
+# this should not be necessary if defined as an R project
+# setwd(WD_PATH_FLDCAL)
+
 source("validation_isimipFL_module_load.R")
 source("validation_isimipFL_module_process.R")
 source("validation_isimipFL_module_plot.R")
