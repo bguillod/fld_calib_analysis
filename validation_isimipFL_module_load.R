@@ -129,8 +129,8 @@ load_all_evals_one_region <- function(regionID, regSum_only=FALSE) {
     # add regional sum data
     data_sum <- data %>% group_by(year, dataset,damage_source) %>% summarise(damage=sum(damage)) %>% mutate(used_in_calibration=year %in% 1992:2010, country=paste0("ALL (",regionID,")"))
     if (regSum_only) {
-        return(data_sum)
+        return(data_sum[,names(data)] %>% add_column(region=regionID))
     } else {
-        return(data %>% bind_rows(data_sum))
+        return(data %>% bind_rows(data_sum) %>% add_column(region=regionID))
     }
 }
