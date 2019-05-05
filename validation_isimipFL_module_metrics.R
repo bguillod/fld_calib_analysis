@@ -5,18 +5,30 @@
 ### ---------------------------------------------------------------------------
 ### ---------------------------------------------------------------------------
 
-r2y <- function(df) {
-    # put each model in a column
-    df_temp <- df %>% spread(dataset, damage)
+rmse_of_yearly_by_country <- function(df) {
+    # return the 
+    # group by damage function (without EM-DAT)
+    # df_grouped <- df %>% filter(damage_source!="EM-DAT") %>% group_by(damage_source)
+    # put each model in a column, append EM-DAT
+    df_grouped <- df %>%
+        select(-rt) %>%
+        filter(damage_source!="EM-DAT") %>%
+        # group_by(damage_source)
+        spread(dataset, damage)%>%
+        left_join(df %>%
+                      filter(damage_source=="EM-DAT") %>%
+                      spread(dataset, damage) %>%
+                      select(-damage_source,-region,-rt,-used_in_calibration),by=c("country","year"))
     # first, compute squared difference between each model and EM-DAT
-    a <- df_temp %>% select(-country, -year, -used_in_calibration) %>%
-        map(.y=df_temp$`EM-DAT`, .f=~(. - .y)**2) %>% as_tibble() %>%
+    a <- df_grouped %>% select(-country, -year, -used_in_calibration,-damage_source,-region) %>%
+        map(.y=df_grouped$`EM-DAT`, .f=~(. - .y)**2) %>% as_tibble() %>%
         select(-`EM-DAT`) %>% 
-        bind_cols(df_temp[1:3],.)
+        bind_cols(df_grouped[1:5],.)
     # second, compute root of average per country (models are in columns)
-    output <-  a %>% group_by(country) %>%
-        select(-country, -year, -used_in_calibration) %>%
-        summarise_if(is.numeric, ~sqrt(sum(.)))
+    output <-  a %>% group_by(country, damage_source) %>% select(-year) %>%
+        # select(-year, -used_in_) %>%
+        summarise_if(is.numeric, ~sqrt(sum(.,na.rm=T))) %>%
+        gather(3:ncol(.),key="dataset",value="damage")
     return(output)
 }
     
@@ -50,4 +62,7 @@ ycor <- function(df) {
     
     return(a)
 }
+
+rt_bias <- function(df, rt) {
     
+}
