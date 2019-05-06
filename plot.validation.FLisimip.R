@@ -43,6 +43,7 @@ calib_methods <- get_calib_methods_tibble()
 data_all_regsums <- foreach(rn=region_names,.combine=rbind) %do% {
     load_all_evals_one_region(rn, regSum_only = T)
 } %>% mutate(country=substr(country,6,8))
+
 # subset with calibrated years only, with return times
 data_calibYears_regsums <- data_all_regsums %>% filter(used_in_calibration==TRUE) %>% compute_return_times()
 # return times for all years
@@ -50,8 +51,11 @@ data_all_regsums <- data_all_regsums %>% compute_return_times()
 
 # first, compute metrics
 test <- rmse_of_yearly_by_country(data_calibYears_regsums)
-# plot min, max and mean of rmse of all models
-output <- test %>% group_by(country,damage_source) %>% summarise(RMSE_mean=mean(damage),RMSE_min=min(damage),RMSE_max=max(damage)) %>% ungroup() %>%
+# plot min, max and mean of rmse of all models (except MMM)
+output <- test %>% filter(dataset!="MMM") %>%
+    group_by(country,damage_source) %>%
+    summarise(RMSE_mean=mean(damage),RMSE_min=min(damage),RMSE_max=max(damage)) %>%
+    ungroup() %>%
     gather(RMSE_mean,RMSE_max,RMSE_min,key="what",value="RMSE")
 ggplot(output,aes(fill=RMSE,x=country,y=damage_source))+geom_raster()+scale_fill_continuous(trans="log10")+facet_wrap(.~what, nrow=5, scales="free_y")
 

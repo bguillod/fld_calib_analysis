@@ -9,16 +9,18 @@ rmse_of_yearly_by_country <- function(df) {
     # return the 
     # group by damage function (without EM-DAT)
     # df_grouped <- df %>% filter(damage_source!="EM-DAT") %>% group_by(damage_source)
+    if ("rt" %in% names(df)) {
+        df <- df %>% select(-rt)
+    }
     # put each model in a column, append EM-DAT
     df_grouped <- df %>%
-        select(-rt) %>%
         filter(damage_source!="EM-DAT") %>%
         # group_by(damage_source)
         spread(dataset, damage)%>%
         left_join(df %>%
                       filter(damage_source=="EM-DAT") %>%
                       spread(dataset, damage) %>%
-                      select(-damage_source,-region,-rt,-used_in_calibration),by=c("country","year"))
+                      select(-damage_source,-region,-used_in_calibration),by=c("country","year"))
     # first, compute squared difference between each model and EM-DAT
     a <- df_grouped %>% select(-country, -year, -used_in_calibration,-damage_source,-region) %>%
         map(.y=df_grouped$`EM-DAT`, .f=~(. - .y)**2) %>% as_tibble() %>%
@@ -28,7 +30,8 @@ rmse_of_yearly_by_country <- function(df) {
     output <-  a %>% group_by(country, damage_source) %>% select(-year) %>%
         # select(-year, -used_in_) %>%
         summarise_if(is.numeric, ~sqrt(sum(.,na.rm=T))) %>%
-        gather(3:ncol(.),key="dataset",value="damage")
+        gather(3:ncol(.),key="dataset",value="damage") %>%
+        ungroup()
     return(output)
 }
     

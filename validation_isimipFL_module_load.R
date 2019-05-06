@@ -125,12 +125,21 @@ load_all_evals_one_region <- function(regionID, regSum_only=FALSE) {
     data_JRC <- load_JRC_eval(regionID) %>%
         filter(dataset!='EM-DAT') %>%
         mutate(used_in_calibration=F, damage_source=ifelse(dataset=="EM-DAT", "EM-DAT","JRC"))
-    data <- bind_rows(data_calib, data_JRC) %>% unique() %>% mutate(damage_source=factor(damage_source, levels=c("EM-DAT","JRC",calib_methods$calibration_method_names)))
+    data <- bind_rows(data_calib, data_JRC) %>%
+        unique() %>%
+        mutate(damage_source=factor(damage_source, levels=c("EM-DAT","JRC",calib_methods$calibration_method_names)))
     # add regional sum data
-    data_sum <- data %>% group_by(year, dataset,damage_source) %>% summarise(damage=sum(damage)) %>% mutate(used_in_calibration=year %in% 1992:2010, country=paste0("ALL (",regionID,")"))
-    if (regSum_only) {
-        return(data_sum[,names(data)] %>% add_column(region=regionID))
-    } else {
-        return(data %>% bind_rows(data_sum) %>% add_column(region=regionID))
+    data_sum <- data %>%
+        group_by(year, dataset,damage_source) %>%
+        summarise(damage=sum(damage)) %>%
+        mutate(used_in_calibration=year %in% 1992:2010, country=paste0("ALL (",regionID,")")) %>%
+        ungroup()
+    data_sum <- data_sum[,names(data)]
+    if (!regSum_only) {
+        data_sum <- data %>% bind_rows(data_sum)
     }
+    data_sum <- data_sum %>%
+        add_column(region=regionID) %>%
+        add_MMM()
+    return(data_sum)
 }

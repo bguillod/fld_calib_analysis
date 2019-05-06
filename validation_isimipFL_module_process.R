@@ -4,6 +4,23 @@
 #     return(data %>% bind_rows(temp)) #%>% select(country) %>% unique()
 # }
 
+add_MMM <- function(data) {
+    # Compute Multi-Model average (MMM) and add as a dataset
+    if ("rt" %in% names(df)) {
+        data <- data %>% select(-rt)
+    }
+    data_with_mmm <- data %>%
+        filter(damage_source!="EM-DAT") %>%
+        group_by(country, year, damage_source) %>%
+        summarise(damage=mean(damage)) %>%
+        ungroup() %>%
+        mutate(dataset="MMM",used_in_calibration=year>=1992) %>%
+        left_join(data %>% select(country,region) %>% unique()) %>%
+        bind_rows(data)
+    data_with_mmm <- data_with_mmm[,]
+    return(data_with_mmm)
+}
+
 compute_return_times <- function(data) {
     data_rt <- data %>% group_by(country, dataset, damage_source) %>% mutate(rank=min_rank(desc(damage)),ny=n()) %>% ungroup()
     data_rt <- data_rt %>% mutate(rt=(ny+1)/(rank)) %>% select(-rank,-ny)
