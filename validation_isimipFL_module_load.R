@@ -20,7 +20,7 @@ load_JRC_eval <- function(RegionID,
     filename_haz = paste0('Haz-Prot', hazard_protection, '-subMATSIRO', subtract_matsiro)
     filename_ent = paste0('Entity-Year', entity_year)
     output_eval_filename = paste0(file.path(DATA_PATH_FLDCAL, 'damages_JRCdamFun/'), filename_head, '_', filename_haz, '_', filename_ent, '_eval.csv')
-    dat <- read_csv(output_eval_filename)
+    dat <- read_csv(output_eval_filename, col_types = cols())
     return(dat)
 }
 
@@ -106,7 +106,7 @@ load_calib_params <- function(...) {
 
 load_calib_eval <- function(...) {
     filename <- get_calib_filename(which_file='eval',...)
-    dat <-  read_csv(filename) %>% mutate(damage=round(damage),
+    dat <-  read_csv(filename, col_types = cols()) %>% mutate(damage=round(damage),
                                           used_in_calibration=as.logical(used_in_calibration))
     return(dat)
 }
@@ -122,12 +122,25 @@ load_all_evals_one_region <- function(regionID, regSum_only=FALSE) {
                                                        mutate(damage_source=ifelse(dataset=="EM-DAT", "EM-DAT",calib_methods$calibration_method_names[i])))
         }
     }
+    if (any(is.na(data_calib$damage))) {
+        warning(paste0("** WARNING ** some damages are missing (calib_eval file for regionID ",regionID,") *****"))
+    }
     data_JRC <- load_JRC_eval(regionID) %>%
         filter(dataset!='EM-DAT') %>%
         mutate(used_in_calibration=F, damage_source=ifelse(dataset=="EM-DAT", "EM-DAT","JRC"))
+    if (any(is.na(data_JRC$damage))) {
+        warning(paste0("** WARNING ** some damages are missing (JRC file for regionID ",regionID,") *****"))
+    }
     data <- bind_rows(data_calib, data_JRC) %>%
         unique() %>%
         mutate(damage_source=factor(damage_source, levels=c("EM-DAT","JRC",calib_methods$calibration_method_names)))
+    # lines below not necessary: if any country has 'NA', the whole region will have NA for that year, dataset and damage_source.
+    # Also, NAs should will only appear in EM-DAT, by definition
+    # # filter out NAs to keep only the same set of countries for the regional sum
+    # if (common_country_years_only) {
+    #     data %>% spread(damage_source,damage) %>% group_by(country, year) %>% summarise(nobs=sum(!is.na(`EM-DAT`)),nJRC=)
+    #     data %>% group_by(country,damage_source) %>% summarise(mean_damage=mean(damage)) %>% filter(is.na(mean_damage)) %>% ungroup() %>%select(country) %>% unique()
+    # }
     # add regional sum data
     data_sum <- data %>%
         group_by(year, dataset,damage_source) %>%
