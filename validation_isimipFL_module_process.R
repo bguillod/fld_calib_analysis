@@ -12,7 +12,7 @@ add_MMM <- function(data) {
     data_with_mmm <- data %>%
         filter(damage_source!="EM-DAT") %>%
         group_by(country, year, damage_source) %>%
-        summarise(damage=mean(damage)) %>%
+        summarise(damage=round(mean(damage))) %>%
         ungroup() %>%
         mutate(dataset="MMM",used_in_calibration=year>=1992) %>%
         left_join(data %>% select(country,region) %>% unique()) %>%
@@ -22,7 +22,8 @@ add_MMM <- function(data) {
 }
 
 compute_return_times <- function(data) {
-    data_rt <- data %>% group_by(country, dataset, damage_source) %>% mutate(rank=min_rank(desc(damage)),ny=n()) %>% ungroup()
+    # data_rt <- data %>% group_by(country, dataset, damage_source) %>% mutate(rank=min_rank(desc(damage)),ny=n()) %>% ungroup()
+    data_rt <- data %>% group_by(country, dataset, damage_source) %>% mutate(rank=rank(desc(damage),ties.method = "first"),ny=n()) %>% ungroup()
     data_rt <- data_rt %>% mutate(rt=(ny+1)/(rank)) %>% select(-rank,-ny)
     return(data_rt)
 }

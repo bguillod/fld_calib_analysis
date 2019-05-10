@@ -20,7 +20,7 @@ load_JRC_eval <- function(RegionID,
     filename_haz = paste0('Haz-Prot', hazard_protection, '-subMATSIRO', subtract_matsiro)
     filename_ent = paste0('Entity-Year', entity_year)
     output_eval_filename = paste0(file.path(DATA_PATH_FLDCAL, 'damages_JRCdamFun/'), filename_head, '_', filename_haz, '_', filename_ent, '_eval.csv')
-    dat <- read_csv(output_eval_filename, col_types = cols())
+    dat <- read_csv(output_eval_filename, col_types = cols()) %>% mutate(damage=round(damage))
     return(dat)
 }
 
