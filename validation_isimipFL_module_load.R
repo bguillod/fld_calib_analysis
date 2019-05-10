@@ -111,8 +111,9 @@ load_calib_eval <- function(...) {
     return(dat)
 }
 
-load_all_evals_one_region <- function(regionID, regSum_only=FALSE) {
+load_all_evals_one_region <- function(regionID, regSum_only=FALSE, calib_only=FALSE) {
     calib_methods <- get_calib_methods_tibble()
+    warning("there is an issue somewhere. Please check. Somehow used_in_calibration is wrongly set, try e.g. data_all_regsums %>% filter(country=='CAR',damage_source=='YL2',dataset=='CLM_gswp3') %>% arrange(rt)")
     for (i in 1:nrow(calib_methods)) {
         if (i==1) {
             data_calib <- call_fun_by_calibMethod(calib_methods$calibration_method_names[i], load_calib_eval, regionID=regionID) %>%
@@ -122,12 +123,18 @@ load_all_evals_one_region <- function(regionID, regSum_only=FALSE) {
                                                        mutate(damage_source=ifelse(dataset=="EM-DAT", "EM-DAT",calib_methods$calibration_method_names[i])))
         }
     }
+    if (calib_only) {
+        data_calib <- data_calib %>% filter(used_in_calibration==T)
+    }
     if (any(is.na(data_calib$damage))) {
         warning(paste0("** WARNING ** some damages are missing (calib_eval file for regionID ",regionID,") *****"))
     }
     data_JRC <- load_JRC_eval(regionID) %>%
         filter(dataset!='EM-DAT') %>%
-        mutate(used_in_calibration=F, damage_source=ifelse(dataset=="EM-DAT", "EM-DAT","JRC"))
+        mutate(damage_source="JRC")
+    if (calib_only) {
+        data_JRC <- data_JRC %>% right_join(data_calib %>% select(country,year) %>% unique())
+    }
     if (any(is.na(data_JRC$damage))) {
         warning(paste0("** WARNING ** some damages are missing (JRC file for regionID ",regionID,") *****"))
     }
@@ -145,8 +152,9 @@ load_all_evals_one_region <- function(regionID, regSum_only=FALSE) {
     data_sum <- data %>%
         group_by(year, dataset,damage_source) %>%
         summarise(damage=sum(damage)) %>%
-        mutate(used_in_calibration=year %in% 1992:2010, country=paste0("ALL (",regionID,")")) %>%
-        ungroup()
+        ungroup() %>%
+        right_join(data %>% select(year,dataset,damage_source,used_in_calibration) %>% unique()) %>%
+        mutate(country=paste0("ALL (",regionID,")"))
     data_sum <- data_sum[,names(data)]
     if (!regSum_only) {
         data_sum <- data %>% bind_rows(data_sum)

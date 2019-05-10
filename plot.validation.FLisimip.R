@@ -38,18 +38,32 @@ calib_methods <- get_calib_methods_tibble()
 # data <- load_all_evals_one_region(region_name)
 # NOW ALL DATA ARE LOADED FOR ONE REGION.
 
+
+
+# For validation of the calibration procedure, only use countries and years which are used in calibration, because these have reasonable damage data:
+data_all_countries <- foreach(rn=region_names,.combine=rbind) %do% {
+    load_all_evals_one_region(rn, regSum_only = F)
+}
+countries_for_validation <- data_all_countries %>% filter(dataset=='CLM_gswp3',nchar(country)==3,damage_source=='DFC',used_in_calibration==T) %>% select(country) %>% unique()
+# so always retain only those countries!
+
+
 # --------------------------------------------------------------------
 # 1) Compare regional sums only
-data_all_regsums <- foreach(rn=region_names,.combine=rbind) %do% {
-    load_all_evals_one_region(rn, regSum_only = T)
-} %>% mutate(country=substr(country,6,8))
-
 # subset with calibrated years only, with return times
-data_calibYears_regsums <- data_all_regsums %>% filter(used_in_calibration==TRUE) %>% compute_return_times()
+data_calibYears_regsums <- foreach(rn=region_names,.combine=rbind) %do% {
+    load_all_evals_one_region(rn, regSum_only = T, calib_only=T)
+} %>% mutate(country=substr(country,6,8))
+data_calibYears_regsums <- data_calibYears_regsums %>% compute_return_times()
 # return times for all years
+data_all_regsums <- foreach(rn=region_names,.combine=rbind) %do% {
+    load_all_evals_one_region(rn, regSum_only = T, calib_only=F)
+} %>% mutate(country=substr(country,6,8))
 data_all_regsums <- data_all_regsums %>% compute_return_times()
+warning("there is an issue somewhere. Please check. Somehow used_in_calibration is wrongly set, try e.g. data_all_regsums %>% filter(country=='CAR',damage_source=='YL2',dataset=='CLM_gswp3') %>% arrange(rt)")
 
 # first, compute metrics
+# note that for validation purpose, it makes sense to only keep countries and years of calibration (as data is considered not robust otherwise)
 test <- rmse_of_yearly_by_country(data_calibYears_regsums)
 # plot min, max and mean of rmse of all models (except MMM)
 output <- test %>% filter(dataset!="MMM") %>%
@@ -60,64 +74,44 @@ output <- test %>% filter(dataset!="MMM") %>%
 ggplot(output,aes(fill=RMSE,x=country,y=damage_source))+geom_raster()+scale_fill_continuous(trans="log10")+facet_wrap(.~what, nrow=5, scales="free_y")
 
 # a) return time plot, calibrated years
-# data_sub <- data_rt %>% filter(country %in% c("ALL (EUR)","DEU", "CHE","FRA"))
 temp <- ggplot(data_calibYears_regsums %>% group_by(rt, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
                aes(x=rt,y=damage))+
-    # geom_smooth(aes(color=damage_source,y=y,ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.1) +
     geom_line(aes(y=y,color=damage_source))+
     facet_wrap(.~country, nrow=5, scales="free_y") +
     scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10") +
     xlab("Return period [yr]") + ylab("damage [USD]") +
     labs(color="Damage source")+
-    theme(legend.position="bottom", legend.box = "horizontal", plot.title = element_text(hjust = 0.5)) +
-    ggtitle("Damage frequency curves by region (calibrated years, 1992-2010)") #+
-    # scale_color_brewer(palette="Dark2")
+    ggtitle("Damage frequency curves by region (calibrated years, 1992-2010)")
 
 pdf(file = file.path(figs_out_path, "DFC_MMM_calib_all_regions.pdf"), height=8, width=7)
 temp
 dev.off()
 
-# envelopes
-# temp <- ggplot(data_calibYears_regsums %>% group_by(rt, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
-#                aes(x=rt,y=damage))+
-#     # geom_smooth(aes(color=damage_source,y=y,ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.1) +
-#     geom_smooth(aes(y=y,ymin=ymin,ymax=ymax,color=damage_source,fill=damage_source),stat="identity", alpha=0.2)+
-#     facet_wrap(.~country, nrow=5, scales="free_y") +
-#     scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10") +
-#     xlab("Return period [yr]") + ylab("damage [USD]") +
-#     labs(color="Damage source",fill="Damage source")+
-#     theme(legend.position="bottom", legend.box = "horizontal")
-
 
 # b) return time plot, all years:
-# data_sub <- data_rt %>% filter(country %in% c("ALL (EUR)","DEU", "CHE","FRA"))
 temp <- ggplot(data_all_regsums %>% group_by(rt, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
-               aes(x=rt,y=damage))+
-    # geom_smooth(aes(color=damage_source,y=y,ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.1) +
+               aes(x=rt,y=y))+
     geom_line(aes(y=y,color=damage_source))+
     facet_wrap(.~country, nrow=5, scales="free_y") +
     scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10")+
     xlab("Return period [yr]") + ylab("damage [USD]") +
     labs(color="Damage source")+
-    theme(legend.position="bottom", legend.box = "horizontal", plot.title = element_text(hjust = 0.5)) +
-    ggtitle("Damage frequency curves by region (all years, 1971-2010)") #+
+    ggtitle("Damage frequency curves by region (all years, 1971-2010)")
+
 pdf(file = file.path(figs_out_path, "DFC_MMM_calib_all_regions_allyears.pdf"), height=8, width=7)
 temp
 dev.off()
 
 # c) yearly damages, calibrated years
-# data_sub <- data_rt %>% filter(country %in% c("ALL (EUR)","DEU", "CHE","FRA"))
 temp <- ggplot(data_calibYears_regsums %>% group_by(year, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
-               aes(x=year,y=damage))+
-    geom_smooth(aes(color=damage_source,y=y,ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
-    # geom_line(aes(y=y,color=damage_source))+
+               aes(x=year,y=y))+
+    geom_ribbon(aes(ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
+    geom_line(aes(y=y,color=damage_source))+
     facet_wrap(.~country, nrow=5, scales="free_y") +
     scale_y_continuous(trans="log10")+#+scale_x_continuous(trans="log10") +
     xlab("Return period [yr]") + ylab("damage [USD]") +
     labs(color="Damage source", fill="Damage source")+
-    theme(legend.position="bottom", legend.box = "horizontal", plot.title = element_text(hjust = 0.5)) +
-    ggtitle("Yearly damages by region (calibrated years, 1992-2010)") #+
-# scale_color_brewer(palette="Dark2")
+    ggtitle("Yearly damages by region (calibrated years, 1992-2010)")
 
 pdf(file = file.path(figs_out_path, "YD_calib_all_regions.pdf"), height=8, width=7)
 temp
@@ -125,18 +119,15 @@ dev.off()
 
 
 # d) yearly damages, all years
-# data_sub <- data_rt %>% filter(country %in% c("ALL (EUR)","DEU", "CHE","FRA"))
 temp <- ggplot(data_all_regsums %>% group_by(year, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
-               aes(x=year,y=damage))+
-    geom_smooth(aes(color=damage_source,y=y,ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
-    # geom_line(aes(y=y,color=damage_source))+
+               aes(x=year,y=y))+
+    geom_ribbon(aes(ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
+    geom_line(aes(y=y,color=damage_source))+
     facet_wrap(.~country, nrow=5, scales="free_y") +
-    scale_y_continuous(trans="log10")+#+scale_x_continuous(trans="log10") +
+    scale_y_continuous(trans="log10")+
     xlab("Return period [yr]") + ylab("damage [USD]") +
     labs(color="Damage source",fill="Damage source")+
-    theme(legend.position="bottom", legend.box = "horizontal", plot.title = element_text(hjust = 0.5)) +
-    ggtitle("Yearly damages by region (all years, 1971-2010)") #+
-# scale_color_brewer(palette="Dark2")
+    ggtitle("Yearly damages by region (all years, 1971-2010)")
 
 pdf(file = file.path(figs_out_path, "YD_calib_all_regions_allyears.pdf"), height=8, width=7)
 temp
@@ -149,8 +140,13 @@ dev.off()
 data_all_countries <- foreach(rn=region_names,.combine=rbind) %do% {
     load_all_evals_one_region(rn, regSum_only = F)
 }
+
+# define which countries were included in calibration and which not. Easier than working with used_in_calibration.
+country_years_for_validation <- data_all_countries %>% filter(dataset=='CLM_gswp3',nchar(country)==3,damage_source=='DFC') %>% select(country,year) %>% unique()
+
 # subset with calibrated years only, with return times
 data_calibYears_countries <- data_all_countries %>% filter(used_in_calibration==TRUE) %>% compute_return_times()
+
 # return times for all years
 data_all_countries <- data_all_countries %>% compute_return_times()
 # data_sub <- data_rt %>% filter(country %in% c("ALL (EUR)","DEU", "CHE","FRA"))
@@ -158,34 +154,36 @@ for (i in 1:length(region_names)) {
     data_sub <- data_all_countries %>%
         filter(region==region_names[i]) %>%
         group_by(rt, country, damage_source) %>%
-        summarise(ymin=min(damage,na.rm=T),ymax=max(damage,na.rm=T),y=mean(damage,na.rm=T)) %>%
+        summarise(ymin=min(damage,na.rm=T),ymax=max(damage,na.rm=T),y=round(mean(damage,na.rm=T))) %>%
         mutate(ymin=ifelse(is.finite(ymin),ymin,NA),ymax=ifelse(is.finite(ymax),ymax,NA),y=ifelse(is.finite(y),y,NA)) %>%
         ungroup()
-        # remove countries without data (all 0 or NA)
+    # remove countries without data (all 0 or NA)
     countries_all <- unique(data_sub$country)
     countries_in <- countries_all[!sapply(countries_all, function(c) data_sub %>% filter(country==c) %>% select(y) %>% transmute(out=is.na(.) | (.==0)) %>% unlist() %>% all(.))]
     data_sub <- data_sub %>% filter(country %in% countries_in)
+    # make countries factors with the whole region first
+    cntr_names <- sort(unique(data_sub$country))
+    cntr_names <- c(cntr_names[nchar(cntr_names)>3],cntr_names[nchar(cntr_names)==3])
+    data_sub <- data_sub %>%
+        mutate(country=factor(country, levels = cntr_names))
     temp <- ggplot(data_sub, aes(x=rt,y=y))+
-        geom_smooth(aes(color=damage_source,y=y,ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.1) +
-        # geom_line(aes(y=y,color=damage_source))+
-        facet_wrap(.~country, ncol=3, scales="free_y") +
-        scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10") +
-        xlab("Return period [yr]") + ylab("damage [USD]") +
-        labs(color="Damage source",fill="Damage source")+
-        theme(legend.position="bottom", legend.box = "horizontal", plot.title = element_text(hjust = 0.5)) +
-        ggtitle(paste0("Region ",region_names[i],": Damage Frequency Curve by country (calibrated years, 1992-2010)")) #+
-    pdf(file = file.path(figs_out_path, paste0("DFC_calib_",region_names[i],".pdf")), height=8/5.5*(1.5+length(countries_in)%/%3), width=7)
-    print(temp)
-    dev.off()
-    temp <- ggplot(data_sub, aes(x=rt,y=y))+
-        # geom_smooth(aes(color=damage_source,y=y,ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.1) +
+        geom_ribbon(aes(ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
         geom_line(aes(y=y,color=damage_source))+
         facet_wrap(.~country, ncol=3, scales="free_y") +
         scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10") +
         xlab("Return period [yr]") + ylab("damage [USD]") +
         labs(color="Damage source",fill="Damage source")+
-        theme(legend.position="bottom", legend.box = "horizontal", plot.title = element_text(hjust = 0.5)) +
-        ggtitle(paste0("Region ",region_names[i],": Damage Frequency Curve by country (calibrated years, 1992-2010)")) #+
+        ggtitle(paste0("Region ",region_names[i],": Damage Frequency Curve by country (calibrated years, 1992-2010)"))
+    pdf(file = file.path(figs_out_path, paste0("DFC_calib_",region_names[i],".pdf")), height=8/5.5*(1.5+length(countries_in)%/%3), width=7)
+    print(temp)
+    dev.off()
+    temp <- ggplot(data_sub, aes(x=rt,y=y))+
+        geom_line(aes(y=y,color=damage_source))+
+        facet_wrap(.~country, ncol=3, scales="free_y") +
+        scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10") +
+        xlab("Return period [yr]") + ylab("damage [USD]") +
+        labs(color="Damage source",fill="Damage source")+
+        ggtitle(paste0("Region ",region_names[i],": Damage Frequency Curve by country (calibrated years, 1992-2010)"))
     pdf(file = file.path(figs_out_path, paste0("DFC_MMM_calib_",region_names[i],".pdf")), height=8/5.5*(1.5+length(countries_in)%/%3), width=7)
     print(temp)
     dev.off()
