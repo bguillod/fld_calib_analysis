@@ -133,7 +133,7 @@ temp <- ggplot(data_all_regsums %>% group_by(year, country, damage_source) %>% s
     facet_wrap(.~country, nrow=5, scales="free_y") +
     scale_y_continuous(trans="log10")+#+scale_x_continuous(trans="log10") +
     xlab("Return period [yr]") + ylab("damage [USD]") +
-    labs(color="Damage source")+
+    labs(color="Damage source",fill="Damage source")+
     theme(legend.position="bottom", legend.box = "horizontal", plot.title = element_text(hjust = 0.5)) +
     ggtitle("Yearly damages by region (all years, 1971-2010)") #+
 # scale_color_brewer(palette="Dark2")
