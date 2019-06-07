@@ -9,22 +9,13 @@ add_MMM <- function(data) {
     if ("rt" %in% names(df)) {
         data <- data %>% select(-rt)
     }
-    data_with_mmm_old <- data %>%
+    data_with_mmm <- data %>%
         filter(damage_source!="EM-DAT") %>%
         group_by(country, year, damage_source) %>%
         summarise(damage=round(mean(damage))) %>%
         ungroup() %>%
         mutate(dataset="MMM",used_in_calibration=year>=1992) %>%
         left_join(data %>% select(country,region) %>% unique()) %>%
-        bind_rows(data)
-    data_with_mmm_new <- data %>%
-        filter(damage_source!="EM-DAT") %>%
-        group_by(country, year, damage_source) %>%
-        summarise(damage=round(mean(damage))) %>%
-        ungroup() %>%
-        # mutate(dataset="MMM",used_in_calibration=( (year>=1992) & () )) %>%
-        mutate(dataset="MMM") %>%
-        left_join(data %>% filter(dataset=="CLM_gswp3") %>% select(country,year,used_in_calibration,damage_source,region) %>% unique()) %>%
         bind_rows(data)
     data_with_mmm <- data_with_mmm[,]
     return(data_with_mmm)

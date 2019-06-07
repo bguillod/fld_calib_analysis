@@ -56,11 +56,11 @@ data_calibYears_regsums <- foreach(rn=region_names,.combine=rbind) %do% {
 } %>% mutate(country=substr(country,6,8))
 data_calibYears_regsums <- data_calibYears_regsums %>% compute_return_times()
 # return times for all years
-data_all_regsums <- foreach(rn=region_names,.combine=rbind) %do% {
+data_all_regsums_orig <- foreach(rn=region_names,.combine=rbind) %do% {
     load_all_evals_one_region(rn, regSum_only = T, calib_only=F)
 } %>% mutate(country=substr(country,6,8))
-data_all_regsums <- data_all_regsums %>% compute_return_times()
-warning("there is an issue somewhere. Please check. Somehow used_in_calibration is wrongly set, try e.g. data_all_regsums %>% filter(country=='CAR',damage_source=='YL2',dataset=='CLM_gswp3') %>% arrange(rt)")
+data_all_regsums <- data_all_regsums_orig %>% compute_return_times()
+
 
 # first, compute metrics
 # note that for validation purpose, it makes sense to only keep countries and years of calibration (as data is considered not robust otherwise)

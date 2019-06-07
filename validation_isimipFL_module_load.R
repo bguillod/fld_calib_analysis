@@ -113,7 +113,6 @@ load_calib_eval <- function(...) {
 
 load_all_evals_one_region <- function(regionID, regSum_only=FALSE, calib_only=FALSE) {
     calib_methods <- get_calib_methods_tibble()
-    warning("there is an issue somewhere. Please check. Somehow used_in_calibration is wrongly set, try e.g. data_all_regsums %>% filter(country=='CAR',damage_source=='YL2',dataset=='CLM_gswp3') %>% arrange(rt)")
     for (i in 1:nrow(calib_methods)) {
         if (i==1) {
             data_calib <- call_fun_by_calibMethod(calib_methods$calibration_method_names[i], load_calib_eval, regionID=regionID) %>%
@@ -126,7 +125,7 @@ load_all_evals_one_region <- function(regionID, regSum_only=FALSE, calib_only=FA
     if (calib_only) {
         data_calib <- data_calib %>% filter(used_in_calibration==T)
     }
-    if (any(is.na(data_calib$damage))) {
+    if (any(is.na(data_calib$damage) & data_calib$dataset!='EM-DAT')) {
         warning(paste0("** WARNING ** some damages are missing (calib_eval file for regionID ",regionID,") *****"))
     }
     data_JRC <- load_JRC_eval(regionID) %>%
@@ -153,7 +152,7 @@ load_all_evals_one_region <- function(regionID, regSum_only=FALSE, calib_only=FA
         group_by(year, dataset,damage_source) %>%
         summarise(damage=sum(damage)) %>%
         ungroup() %>%
-        right_join(data %>% select(year,dataset,damage_source,used_in_calibration) %>% unique()) %>%
+        right_join(data %>% select(year,dataset,damage_source) %>% unique() %>% mutate(used_in_calibration=year>=1992)) %>%
         mutate(country=paste0("ALL (",regionID,")"))
     data_sum <- data_sum[,names(data)]
     if (!regSum_only) {
