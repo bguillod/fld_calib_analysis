@@ -55,6 +55,13 @@ data_calibYears_regsums <- foreach(rn=region_names,.combine=rbind) %do% {
     load_all_evals_one_region(rn, regSum_only = T, calib_only=T)
 } %>% mutate(country=substr(country,6,8))
 data_calibYears_regsums <- data_calibYears_regsums %>% compute_return_times()
+# BUT ISSUE: for regional sum, we want two values:
+# (1) For each year, summing only the countries that are included in calibration FOR THAT YEAR (also for EM-DAT!)
+# (2) All countries for the region.
+# For calibration methods with 'exclude_years_0totals' set to FALSE, point (1) above is what is done...
+# But for those with 'exclude_years_0totals' set to TRUE, it is more complicated as one should filter by !!!
+
+
 # return times for all years
 data_all_regsums_orig <- foreach(rn=region_names,.combine=rbind) %do% {
     load_all_evals_one_region(rn, regSum_only = T, calib_only=F)
@@ -72,6 +79,34 @@ output <- test %>% filter(dataset!="MMM") %>%
     ungroup() %>%
     gather(RMSE_mean,RMSE_max,RMSE_min,key="what",value="RMSE")
 ggplot(output,aes(fill=RMSE,x=country,y=damage_source))+geom_raster()+scale_fill_continuous(trans="log10")+facet_wrap(.~what, nrow=5, scales="free_y")
+# maybe better: plot relative difference to JRC?
+get_metric_diff <- function(data) {
+    jrc_dat <- data %>% filter(damage_source=='JRC')
+    dat_diff <- data %>% filter(damage_source!='JRC') %>%
+        left_join(jrc_dat, by=c("country","what")) %>%
+        mutate(RMSE_diff=RMSE.x-RMSE.y, RMSE_rel_diff=100*RMSE_diff/RMSE.y,what=paste0(what,"_diff")) %>%
+        rename(damage_source=damage_source.x, RMSE=RMSE.x, RMSE_JRC=RMSE.y) %>%
+        select(-damage_source.y)
+    return(dat_diff)
+}
+output_diff <- get_metric_diff(output)
+ggplot(output_diff %>% filter(what=="RMSE_mean_diff"),aes(fill=RMSE_rel_diff,x=country,y=damage_source))+geom_raster()+scale_fill_continuous(type="viridis",name="Difference in RMSE relative to JRC [%]",direction=-1)
+# adding average of all regions
+output_diff <- output_diff %>%bind_rows(
+    output_diff %>% group_by(damage_source, what) %>% summarise(RMSE_rel_diff=mean(RMSE_rel_diff)) %>% ungroup() %>% add_column(country='ALL')
+)
+ggplot(output_diff %>% filter(what=="RMSE_mean_diff"),aes(fill=RMSE_rel_diff,x=country,y=damage_source))+geom_raster()+scale_fill_continuous(type="viridis",name="Difference in RMSE relative to JRC [%]",direction=-1)
+jitter <- position_jitter(width = 0.1, height = 0.1)
+ggplot(output_diff,aes(y=RMSE_rel_diff,x=country,colour=damage_source))+#,shape=what))+
+    # geom_point(data=output_diff %>% filter(what=="RMSE_mean_diff"))+
+    geom_pointrange(data=output_diff %>%
+                        select(-RMSE,-RMSE_JRC,-RMSE_diff) %>%
+                        spread(what,RMSE_rel_diff) %>%
+                        rename(y=RMSE_mean_diff, ymin=RMSE_min_diff,ymax=RMSE_max_diff),
+                    aes(y=y,ymin=ymin,ymax=ymax),shape=21,position=jitter) +
+    ylab("Difference in RMSE relative to JRC [%]")+
+    labs(color="Damage source")
+
 
 # a) return time plot, calibrated years
 temp <- ggplot(data_calibYears_regsums %>% group_by(rt, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
