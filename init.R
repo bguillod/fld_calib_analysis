@@ -5,6 +5,7 @@ source(".init_local.R")
 library(RColorBrewer)
 library(tidyverse)
 library(foreach)
+library(stringi)
 options(stringsAsFactors = FALSE)
 
 FIGS_PATH <- file.path("/Users/bguillod/Dropbox/ETH_WORK/figs")
