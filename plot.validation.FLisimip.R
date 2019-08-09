@@ -40,7 +40,7 @@ calib_methods <- get_calib_methods_tibble()
 
 
 
-# For validation of the calibration procedure, only use countries and years which are used in calibration, because these have reasonable damage data:
+# For validation of the calibration procedure, only use countries and years which are used in calibration, because these have reasonable damage data (only exception: yearly time series as on these it is easy to see filter years by eye, so there only calibrated countries but all years):
 
 # OK (was a TODO but solved below). load the list of countries retained within each region, then load data only for those countries and years 1992-2010, then compute regional sums per year. Do all analysis with only these data.
 data_all_countries <- foreach(rn=region_names,.combine=rbind) %do% {
@@ -55,28 +55,38 @@ if (!all.equal(countries_for_validation,in_calib_ctrs %>% select(country=ISO))) 
     stop("** ERROR ** issue in country selection")
 }
 
-# now filter out years and countries
-data_calib <- data_all_countries %>% filter(year>=1992, country %in% (countries_for_validation %>% flatten_chr))
+# first, filter out countries
+data_calib_allyears <- data_all_countries %>% filter(country %in% (countries_for_validation %>% flatten_chr))
+
 # compute regional sum
-data_calib_regSum <- data_calib %>% group_by(region, year,dataset,damage_source) %>%
+data_calib_regSum_allyears <- data_calib_allyears %>% group_by(region, year,dataset,damage_source) %>%
     summarise(damage=sum(damage)) %>%
     ungroup() %>%
     mutate(country=paste0("ALL (",region,")"), used_in_calibration=TRUE)
 
 # add regional sum to data
-data_calib_country <- data_calib
-data_calib <- data_calib %>%
-    bind_rows(data_calib_regSum)
+data_calib_country_allyears <- data_calib_allyears
+data_calib_allyears <- data_calib_allyears %>%
+    bind_rows(data_calib_regSum_allyears)
 
-# add return times
+# Second, filter out years
+data_calib_country <- data_calib_country_allyears %>% filter(year >= 1992)
+data_calib_regSum <- data_calib_regSum_allyears %>% filter(year >= 1992)
+data_calib <- data_calib_allyears %>% filter(year >= 1992)
+
+# Third, add return times (only for those with years filtered out)
 data_calib_country <-  data_calib_country %>% compute_return_times()
 data_calib_regSum <-  data_calib_regSum %>% compute_return_times()
 data_calib <-  data_calib %>% compute_return_times()
 
-# So now we have our datasets, with only the calibrated years:
+# So now we have our 6 datasets:
+# a) with only the calibrated years:
 # - data_calib_country: data for all countries
 # - data_calib_regSum: data for regional sums
 # - data_calib: all data together
+# b) with all years (for time series plots only):
+# same with *_allyears appended to them
+
 
 # --------------------------------------------------------------------
 # 1) Compare regional sums only
@@ -180,6 +190,7 @@ ggplot(rmse_all, aes(x=region,y=RMSE_rel_diff,col=damage_source)) +
 
 
 # a) return time plot, calibrated years
+data_calibYears_regsums <- data_calib_regSum
 temp <- ggplot(data_calibYears_regsums %>% group_by(rt, region, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
                aes(x=rt,y=damage))+
     geom_line(aes(y=y,color=damage_source))+
@@ -208,36 +219,49 @@ dev.off()
 # temp
 # dev.off()
 
-# c) yearly damages, calibrated years
-temp <- ggplot(data_calibYears_regsums %>% group_by(year, region, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
-               aes(x=year,y=y))+
-    geom_ribbon(aes(ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
-    geom_line(aes(y=y,color=damage_source))+
-    facet_wrap(.~region, nrow=5, scales="free_y") +
-    scale_y_continuous(trans="log10")+#+scale_x_continuous(trans="log10") +
-    xlab("Return period [yr]") + ylab("damage [USD]") +
-    labs(color="Damage source", fill="Damage source")+
-    ggtitle("Yearly damages by region (calibrated countries, 1992-2010)")
-
-pdf(file = file.path(figs_out_path, "YD_calib_all_regions.pdf"), height=8, width=7)
-temp
-dev.off()
-
-
-# # d) yearly damages, all years
-# temp <- ggplot(data_all_regsums %>% group_by(year, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
+# c) yearly damages, calibrated years - not used
+# temp <- ggplot(data_calibYears_regsums %>% group_by(year, region, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
 #                aes(x=year,y=y))+
 #     geom_ribbon(aes(ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
 #     geom_line(aes(y=y,color=damage_source))+
-#     facet_wrap(.~country, nrow=5, scales="free_y") +
-#     scale_y_continuous(trans="log10")+
+#     facet_wrap(.~region, nrow=5, scales="free_y") +
+#     scale_y_continuous(trans="log10")+#+scale_x_continuous(trans="log10") +
 #     xlab("Return period [yr]") + ylab("damage [USD]") +
-#     labs(color="Damage source",fill="Damage source")+
-#     ggtitle("Yearly damages by region (all years, 1971-2010)")
-
-# pdf(file = file.path(figs_out_path, "YD_calib_all_regions_allyears.pdf"), height=8, width=7)
+#     labs(color="Damage source", fill="Damage source")+
+#     ggtitle("Yearly damages by region (calibrated countries, 1992-2010)")
+# 
+# pdf(file = file.path(figs_out_path, "YD_calib_all_regions.pdf"), height=8, width=7)
 # temp
 # dev.off()
+
+
+# d) yearly damages, all years
+data_all_regsums <- data_calib_regSum_allyears
+data_all_regsums_emdat <- data_all_regsums %>%
+    filter(dataset == "EM-DAT") %>%
+    mutate(isna=is.na(damage),
+           damage = ifelse(is.na(damage),0,damage))
+temp <- ggplot(data_all_regsums %>% filter(dataset != "EM-DAT") %>% group_by(year, region, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),# %>% mutate(y=na_if(y,0)),
+               aes(x=year,y=y)) +
+    # geom_vline(data=data.frame(y=1991.5),aes(xintercept=y)) +
+    geom_ribbon(aes(ymin=ymin,ymax=ymax,fill=damage_source),stat="identity", alpha=0.16) +
+    geom_line(aes(y=y,color=damage_source)) +
+    geom_point(data = data_all_regsums_emdat %>% filter(isna),
+               aes(x=year,y=damage), col="red") +
+    geom_point(data = data_all_regsums_emdat %>% filter(damage==0 & !isna),
+               aes(x=year,y=damage), col="black") +
+    geom_point(data = data_all_regsums_emdat %>% filter(damage>0),
+               aes(x=year,y=damage), col="black", size=0.5) +
+    facet_wrap(.~region, nrow=5, scales="free_y") +
+    scale_y_continuous(trans="log10")+
+    xlab("Year") + ylab("damage [USD]") +
+    labs(color="Damage function",fill="Damage function")+
+    ggtitle("Yearly damages by region")+ 
+    annotate("rect", xmin=-Inf, xmax=1991.5, ymin=0, ymax=Inf, alpha=0.4, fill="grey")
+
+pdf(file = file.path(figs_out_path, "YD_calib_all_regions_allyears.pdf"), height=8, width=7)
+temp
+dev.off()
 
 
 
