@@ -49,6 +49,10 @@ get_damFuns_JRC <- function() {
             dat <- dat %>% bind_rows(get_damFun_JRC(continents[i]) %>% add_column(continent=continents[i], .before=1))
         }
     }
+    # Add spaces to continents
+    dat$continent <- dat$continent %>%
+        str_replace(pattern = "NorthAmerica",replacement = "North America") %>%
+        str_replace(pattern = "SouthAmerica",replacement = "South America")
     return(dat)
 }
 
@@ -74,10 +78,10 @@ regions_to_full <- function(regionID) {
 
 regions_to_continent <- function(regionID) {
     switch(regionID,
-           "NAM"="NorthAmerica",
+           "NAM"="North America",
            "LAN"=,
            "LAS"=,
-           "CAR"="SouthAmerica",
+           "CAR"="South America",
            "EUR"="Europe",
            "NAF"=,
            "SAF"=,

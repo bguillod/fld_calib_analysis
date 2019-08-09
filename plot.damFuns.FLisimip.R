@@ -26,8 +26,13 @@ jrc_df <- get_damFuns_JRC()
 temp <- ggplot(jrc_df, aes(x=fld_dph,y=MDR))+geom_line(aes(color=continent))+
     coord_cartesian(xlim=c(0,8))+
     ggtitle("JRC damage functions")+
-    theme(plot.title = element_text(hjust = 0.5))+
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position="right",
+          legend.box = "vertical",
+          legend.box.background = element_rect(linetype = 1, size = 0.5, colour = 1),
+          legend.title = element_blank())+
     xlab("Flood height [m]")+ylab("MDR [-]")
+    
 pdf(file = file.path(figs_out_path, "JRC_damFuns.pdf"), height=5, width=7)
 temp
 dev.off()
@@ -35,23 +40,32 @@ dev.off()
 # --------------------------
 # calibrated
 calib_damfuns <- get_all_calib_damFuns() %>% mutate(continent=sapply(regionID, regions_to_continent))
+regids <- sort(unique(calib_damfuns$regionID))
+pal <- c(brewer.pal(12,"Paired"),"black","grey50","grey85")
+names(pal) <- regids
 temp <- ggplot(calib_damfuns, aes(x=fld_dph,y=MDR))+
     geom_line(aes(color=regionID))+
-    geom_line(data=jrc_df, color=1, size=0.5)+
+    geom_line(data=jrc_df, color=1, size=0.5, lty=2)+
     facet_grid(continent~calib_method)+
-    theme(plot.title = element_text(hjust = 0.5))+
-    xlab("Flood height [m]")+ylab("MDR [-]")
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position="right",
+          legend.box = "vertical",
+          legend.box.background = element_rect(linetype = 1, size = 0.5, colour = 1),
+          legend.title = element_blank()) +
+    xlab("Flood height [m]")+ylab("MDR [-]") +
+    scale_color_manual(values = pal) +
+    xlim(c(0,12))
 pdf(file = file.path(figs_out_path, "all_damFuns_calib_continent.pdf"), height=7, width=7)
 temp
 dev.off()
 
-# combine them
-damfuns_all <- calib_damfuns %>% bind_rows(jrc_df %>% add_column(calib_method="JRC", regionID=""))
-# make sure the regionID is somewhat random
-damfuns_all <- damfuns_all %>% group_by(continent) %>% mutate(countryid=as.character(dense_rank(regionID))) %>% ungroup()
-temp <- ggplot(damfuns_all, aes(x=fld_dph,y=MDR)) +
-    geom_line(aes(color=countryid, linetype=calib_method)) +
-    facet_grid(continent~.)
+# # combine them
+# damfuns_all <- calib_damfuns %>% bind_rows(jrc_df %>% add_column(calib_method="JRC", regionID=""))
+# # make sure the regionID is somewhat random
+# damfuns_all <- damfuns_all %>% group_by(continent) %>% mutate(countryid=as.character(dense_rank(regionID))) %>% ungroup()
+# temp <- ggplot(damfuns_all, aes(x=fld_dph,y=MDR)) +
+#     geom_line(aes(color=countryid, linetype=calib_method)) +
+#     facet_grid(continent~.)
 
 
 # ggplot(calib_damfuns %>% group_by(continent) %>% mutate(countryid=as.character(dense_rank(regionID))) %>% ungroup(),
