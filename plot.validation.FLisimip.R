@@ -191,13 +191,17 @@ ggplot(rmse_all, aes(x=region,y=RMSE_rel_diff,col=damage_source)) +
 
 # a) return time plot, calibrated years
 data_calibYears_regsums <- data_calib_regSum
-temp <- ggplot(data_calibYears_regsums %>% group_by(rt, region, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
+data_all_regsums_emdat <- data_calib_regSum %>% filter(dataset == "EM-DAT")
+
+temp <- ggplot(data_calibYears_regsums %>% filter(dataset != "EM-DAT") %>% group_by(rt, region, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
                aes(x=rt,y=damage))+
     geom_line(aes(y=y,color=damage_source))+
+    geom_point(data = data_calib_regSum %>% filter(dataset == "EM-DAT"),
+               aes(x=rt,y=damage), col="black", size=0.5) +
     facet_wrap(.~region, nrow=5, scales="free_y") +
     scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10") +
-    xlab("Return period [yr]") + ylab("damage [USD]") +
-    labs(color="Damage source")+
+    xlab("Return period [yr]") + ylab("damage [2005 USD]") +
+    labs(color="Damage function")+
     ggtitle("Damage frequency curves by region (calibrated countries, 1992-2010)")
 
 pdf(file = file.path(figs_out_path, "DFC_MMM_calib_all_regions.pdf"), height=8, width=7)
@@ -206,9 +210,11 @@ dev.off()
 
 
 # b) return time plot, all years:
-# temp <- ggplot(data_all_regsums %>% group_by(rt, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
+# temp <- ggplot(data_all_regsums %>% filter(dataset != "EM-DAT") %>% group_by(rt, country, damage_source) %>% summarise(ymin=min(damage),ymax=max(damage),y=mean(damage))%>%ungroup(),
 #                aes(x=rt,y=y))+
 #     geom_line(aes(y=y,color=damage_source))+
+#     geom_point(data = data_all_regsums %>% filter(dataset == "EM-DAT"),
+#                aes(x=rt,y=damage), col="black", size=0.5) +
 #     facet_wrap(.~country, nrow=5, scales="free_y") +
 #     scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10")+
 #     xlab("Return period [yr]") + ylab("damage [USD]") +
