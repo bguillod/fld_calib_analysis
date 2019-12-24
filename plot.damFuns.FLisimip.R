@@ -6,6 +6,7 @@ source("validation_isimipFL_module_load.R")
 source("validation_isimipFL_module_process.R")
 source("validation_isimipFL_module_plot.R")
 source("validation_isimipFL_module_damFun.R")
+source("validation_isimipFL_module_helpers.R")
 
 figs_out_path <- file.path(FIGS_PATH, "damFuns")
 if (!dir.exists(figs_out_path)) dir.create(figs_out_path)

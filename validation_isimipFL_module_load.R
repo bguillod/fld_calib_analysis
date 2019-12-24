@@ -24,7 +24,20 @@ load_JRC_eval <- function(RegionID,
     return(dat)
 }
 
-get_calib_filename <- function(regionID,calib_method="patternsearch",cost_function,which_file,
+get_all_calib_filenames <- function(regionID, calib_method_list = get_calib_methods_tibble()) {
+    fn <- sapply(1:nrow(calib_method_list), function(i) {
+        get_calib_filename(regionID,
+                           cost_function = calib_method_list$cost_function[i],
+                           exclude_years_0totals = calib_method_list$exclude_years_0totals[i],
+                           which_file = "mat")
+    })
+    calib_method_list %>% mutate(filename=fn)
+}
+
+get_calib_filename <- function(regionID,
+                               calib_method="patternsearch",
+                               cost_function,
+                               which_file,
                                years_range=c(1992,2010),
                                calib_options=NULL,
                                n_per_dim=20,underestimation_factor=2,
